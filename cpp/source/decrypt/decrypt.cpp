@@ -13,7 +13,7 @@
  * of the project delivered to anyone in the future.
  */
 
-#include "include/bk-kms/decrypt.h"
+#include "bk-kms/decrypt.h"
 
 #include "internal/crypto/crypto.h"
 
