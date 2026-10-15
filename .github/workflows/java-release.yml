@@ -1,0 +1,85 @@
+name: Publish Java SDK to Maven Central
+
+on:
+  push:
+    tags:
+      - "java/v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: java-maven-central-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'TencentBlueKing/bk-kms-sdk'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: java
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+      - name: Check tag matches package version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version=$(mvn -B -ntp -q help:evaluate -Dexpression=project.version -DforceStdout)
+          expected_tag="java/v${version}"
+          if [ "${RELEASE_TAG}" != "${expected_tag}" ]; then
+            echo "::error::Tag ${RELEASE_TAG} does not match package version; expected ${expected_tag}"
+            exit 1
+          fi
+      - name: Check secrets are configured
+        env:
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          missing=0
+          for name in SONATYPE_USERNAME SONATYPE_PASSWORD SIGNING_KEY SIGNING_KEY_ID SIGNING_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Configure the ${name} secret in the repository."
+              missing=1
+            fi
+          done
+          exit ${missing}
+      - name: Set up GPG
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
+          echo use-agent >> ~/.gnupg/gpg.conf
+          echo pinentry-mode loopback >> ~/.gnupg/gpg.conf
+          echo allow-loopback-pinentry >> ~/.gnupg/gpg-agent.conf
+          echo RELOADAGENT | gpg-connect-agent
+          printf '%s\n' "${SIGNING_KEY}" | awk '{gsub(/\\n/,"\n")}1' \
+            | gpg --batch --pinentry-mode loopback --passphrase "${SIGNING_PASSWORD}" --import
+          gpg --list-secret-keys --keyid-format LONG
+      - name: Maven Deploy
+        env:
+          MAVEN_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          mvn -B -ntp -Prelease clean deploy \
+            -Dgpg.keyname=${{ secrets.SIGNING_KEY_ID }}
+      - name: Clean Up
+        if: ${{ always() }}
+        run: |
+          rm -rf ~/.gnupg
