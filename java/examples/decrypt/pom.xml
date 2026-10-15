@@ -20,7 +20,7 @@
 
     <groupId>com.tencent.bk.kms.examples</groupId>
     <artifactId>decrypt-example</artifactId>
-    <version>1.0.0-alpha.1</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>decrypt-example</name>
@@ -35,7 +35,7 @@
         <dependency>
             <groupId>com.tencent.bk.kms</groupId>
             <artifactId>bk-kms-sdk</artifactId>
-            <version>1.0.0-alpha.1</version>
+            <version>1.0.0</version>
         </dependency>
     </dependencies>
 </project>

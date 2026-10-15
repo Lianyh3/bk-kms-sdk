@@ -13,7 +13,7 @@
 <dependency>
     <groupId>com.tencent.bk.kms</groupId>
     <artifactId>bk-kms-sdk</artifactId>
-    <version>1.0.0-alpha.1</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
