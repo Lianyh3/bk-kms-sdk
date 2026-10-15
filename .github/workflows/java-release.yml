@@ -77,8 +77,15 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.SIGNING_PASSWORD }}
         run: |
+          mvn -v
           mvn -B -ntp -Prelease clean deploy \
             -Dgpg.keyname=${{ secrets.SIGNING_KEY_ID }}
+      - name: Show bundle content on failure
+        if: ${{ failure() }}
+        run: |
+          if [ -f target/central-publishing/central-bundle.zip ]; then
+            unzip -l target/central-publishing/central-bundle.zip
+          fi
       - name: Clean Up
         if: ${{ always() }}
         run: |
